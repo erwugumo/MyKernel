@@ -1,0 +1,13 @@
+kernel编译直接运行scons即可
+scons是类似make的编译指令，那么就需要顺着最外层文件夹的Makefile看起
+makefile定义了一系列的规则来指定，哪些文件须要先编译，哪些文件须要后编译，哪些文件须要又一次编译，甚至于进行更复杂的功能操作。
+最外层的Makefile指定了五个子文件夹：lib kernel srv sbin bin
+说明编译要用到这五个文件夹。
+Makefile中的include会将别的Makefile文件包括进来。
+
+
+
+
+
+
+
