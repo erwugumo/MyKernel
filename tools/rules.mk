@@ -91,7 +91,17 @@ LDFLAGS	    += $(foreach lib,$(libraries), $(TOPDIR)/lib/$(lib)/$(lib).a)
 #
 # The default target is all.
 #
-# 用冒号定义的是目标变量
+# 用冒号定义的是目标，all就是一个目标
+# 若直接 make 或 make all 的话，会执行$(TARGET) 和 install 对应的命令
+
+# 在执行make时，若后面接all下对应的选项，则有：
+
+# make  $(TARGET)对应值， 则只执行$(TARGET)对应命令
+
+# make  install，则只执行install对应命令
+# 对于下面这行，直接make则执行六条命令
+# 也可以 make subdir，则执行subdir这些行
+
 all: pre-hooks subdirs $(OBJECTS) $(program) $(library) post-hooks
 pre-hooks:
 post-hooks:
@@ -99,6 +109,9 @@ post-hooks:
 #
 # Recurse into subdirectories (NOT parallel!)
 #
+# 通常，make会把其要运行的命令行在命令运行前输出到屏幕上。当我们用“@”字符在命令行前，那么，这个命令将不被make显示出来
+# 实际想用$要用$$
+# for...do...done是shell脚本的循环
 subdirs:
 	@for dir in $(subdirs); do \
 	  $(MAKE) -C $$dir; \
@@ -107,9 +120,23 @@ subdirs:
 #
 # Link a program.
 #
+# $@是主动化变量，表示目标集$(OBJECTS) .o
+# $<是主动化变量，表示全部的依赖目标集中的第一个依赖文件.c
+# 只要make看到一个[.o]文件，它就会自动的把[.c]文件加在依赖关系中，如果make找到一个whatever.o，那么whatever.c，就会是whatever.o的依赖文件。
+# 举一个例子如下：
+# make text.o
+# 就是调用 make $(OBJECTS)，
+# 就是调用 $(C_OBJECTS) $(C++_OBJECTS) $(ASM_OBJECTS)，
+# 就是调用 %.o : %.c
+#	$(CC) $(CFLAGS) -o $@ -c $<
+# 带入 text.o ：text.c
+#   gcc -Wall -Werror -MD -O0 -g3 -fno-builtin -o text.o -c text.c
 $(program): $(OBJECTS)
+# 上面是一条目标行，目标行告诉make建立什么。它由一个目标名表后面跟冒号“:”，再跟一个依赖性表组成。
 	$(LD) $(LDFLAGS) -T $(LDSCRIPT) -o $@ $(OBJECTS) $(objects)
 	$(LD) $(LDFLAGS) -T $(LDSCRIPT) -o $@.bin --oformat binary $(OBJECTS) $(objects)
+# 上面这两行是命令行，命令行用来定义生成目标的动作。
+# 在目标行中分号“;”后面的文件都认为是一个命令，或者一行以Tab制表符开始的也是命令。
 
 #
 # Built a library.
@@ -139,11 +166,13 @@ $(ASM_OBJECTS) : %.o : %.S
 #
 # Include generated dependancies.
 #
+# -include 这些，即使报错也无视
 -include $(wildcard *.d)
 
 #
 # Cleans up OBJECTS.
 #
+# $MAKE是默认变量，$$dir表示在运行clean指令时，变为$dir，即上面的变量dir
 clean:
 	@for dir in $(subdirs); do \
 	  $(MAKE) -C $$dir clean; \
@@ -153,4 +182,5 @@ clean:
 #
 # These need to be forced.
 #
+# .PHONY 表示这是一个伪目标文件，也就是说并没有一个叫clean的文件，它就是一条指令
 .PHONY: clean $(subdirs) $(PHONY)
