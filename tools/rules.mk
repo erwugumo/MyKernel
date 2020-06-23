@@ -112,6 +112,7 @@ post-hooks:
 # 通常，make会把其要运行的命令行在命令运行前输出到屏幕上。当我们用“@”字符在命令行前，那么，这个命令将不被make显示出来
 # 实际想用$要用$$
 # for...do...done是shell脚本的循环
+# $(subdirs) 是上一个Makefile中定义的变量
 subdirs:
 	@for dir in $(subdirs); do \
 	  $(MAKE) -C $$dir; \
