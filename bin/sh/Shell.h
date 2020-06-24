@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,12 +18,23 @@
 #ifndef __SH_SHELL
 #define __SH_SHELL
 
+/** Maximum number of supported command arguments. */
+#define MAX_ARGV 16
+
+#include <Types.h>
+#include "ShellCommand.h"
+
 /**
  * Very basic command shell.
  */
 class Shell
 {
     public:
+
+	/**
+	 * Constructor function.
+	 */
+	Shell();
 
 	/**
 	 * Executes the Shell by entering an infinite loop.
@@ -43,26 +54,15 @@ class Shell
 	 * Output a prompt.
 	 */
 	void prompt();
-    
+
 	/**
-	 * Simple builtin ps(1) equivalent.
-	 */
-	void ps();
-	
-	/**
-	 * Uname(1) function.
-	 */
-	void uname();
-	
-	/**
-	 * memstat function.
-	 */
-	void memstat();
-	
-	/**
-	 * Displays program help.
-	 */
-	void help();
+	 * Parses an input string into seperate pieces.
+	 * @param cmdline Command input string.
+	 * @param argv Argument list buffer.
+	 * @param maxArgv Maximum number of entries in argv.
+	 * @return Number of parsed arguments.
+	 */	
+	Size parse(char *cmdline, char **argv, Size maxArgv);
 };
 
 #endif /* __SH_SHELL */

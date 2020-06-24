@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,14 +18,43 @@
 #ifndef __API_IPCMESSAGE_H
 #define __API_IPCMESSAGE_H
 
-#include <arch/Process.h>
-#include <arch/API.h>
+#include <FreeNOS/Process.h>
+#include <FreeNOS/API.h>
 #include <Macros.h>
 #include <Types.h>
+#include <Error.h>
 #include <Config.h>
+#include <string.h>
+
+/** 
+ * @defgroup kernelapi kernel (API)
+ * @{ 
+ */
 
 /** SystemCall number for IPCMessage(). */
 #define IPCMESSAGE 1
+
+/** Maximum size of an Message, in bytes. */
+#define MAX_MESSAGE_SIZE 64
+
+/**
+ * Forward declaration.
+ * @see Message
+ */
+class Message;
+
+/**
+ * Prototype for user applications.
+ * @param proc Remote process to send/receive from.
+ * @param action Either Send or Receive.
+ * @param msg Message buffer.
+ * @param sz Size of message.
+ * @return Zero on success and error code on failure.
+ */
+inline Error IPCMessage(ProcessID proc, Action action, Message *msg, Size sz)
+{
+    return trapKernel4(IPCMESSAGE, proc, action, (ulong) msg, sz);
+}
 
 /**
  * Determines the type a Message can be.
@@ -40,7 +69,7 @@ MessageType;
 
 /**
  * Inter Process Communication (IPC) message.
- * Derived classes must have 5 ulong data members.
+ * Derived classes must have 6 ulong data members.
  */
 class Message
 {
@@ -68,6 +97,17 @@ class Message
 	Message(Message *m) : from(m->from), type(m->type)
 	{
 	}
+	
+	/**
+	 * Perform IPC operation to a given process.
+	 * @param pid Process to IPC to/from.
+	 * @param action Determines the action to perform.
+	 * @param sz Size of message.
+	 */
+	Error ipc(ProcessID pid, Action action, Size sz)
+	{
+	    return IPCMessage(pid, action, this, sz);
+	}
 
 	/** At minimum, we must know the origin. */
 	ProcessID from;
@@ -85,19 +125,21 @@ class UserMessage : public Message
     
 	/**
 	 * Default constructor function.
+	 * @param u Input  message.
+	 * @param sz Size of the message.
 	 */
-	UserMessage()
-	    : Message(IPCType, ZERO), d1(0), d2(0), d3(0), d4(0), d5(0)
+	UserMessage(Message *u, Size sz) : Message(u), size(sz)
 	{
+	    data = new s8[size];
+	    memcpy(data, u, size);
 	}
-	
+
 	/**
-	 * Copy constructor.
-	 * @param u UserMessage instance pointer.
+	 * Destructor function.
 	 */
-	UserMessage(UserMessage *u)
-	    : Message(u), d1(u->d1), d2(u->d2), d3(u->d3), d4(u->d4), d5(u->d5)
+	~UserMessage()
 	{
+	    delete data;
 	}
 
 	/**
@@ -107,12 +149,14 @@ class UserMessage : public Message
 	 */
 	bool operator == (UserMessage *u)
 	{
-	    return d1 == u->d1 && d2 == u->d2 && d3 == u->d3 &&
-		   d4 == u->d4 && d5 == u->d5;
+	    return data == u->data && size == u->size;
 	}
 
-	/** User messages have exactly five ulong's as data. */
-        ulong d1, d2, d3, d4, d5;
+	/** User data. */
+	s8 *data;
+	
+	/** Size of user data. */
+	Size size;
 };
 
 /**
@@ -126,27 +170,16 @@ class InterruptMessage : public Message
 	 * Default constructor function.
 	 */
 	InterruptMessage(ulong v) :
-	    Message(IRQType, KERNEL_PID), vector(v)
+	    Message(IRQType, KERNEL), vector(v)
 	{
 	}
-	
+
 	/** Interrupt vector. */
 	ulong vector;
-	
-	/** Not used. */
-	ulong unused[4];
 };
 
 /**
- * Prototype for user applications.
- * @param proc Remote process to send/receive from.
- * @param action Either Send or Receive.
- * @param msg Message buffer.
- * @return Instance of a SystemInfo object.
+ * @}
  */
-inline int IPCMessage(ProcessID proc, Action action, Message *msg)
-{
-    return trapKernel3(IPCMESSAGE, proc, action, (ulong) msg);
-}
 
 #endif /* __API_IPCMESSAGE_H */

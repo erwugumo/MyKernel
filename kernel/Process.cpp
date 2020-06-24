@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,9 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arch/Process.h>
+#include <FreeNOS/Process.h>
 #include <Vector.h>
 #include <Types.h>
+#include <Config.h>
 #include <ListIterator.h>
 
 Vector<Process> Process::procs(MAX_PROCS);
@@ -30,12 +31,16 @@ Process::Process(Address addr) : status(Stopped)
     
 Process::~Process()
 {
+    wakeups.remove(this);
     procs.remove(pid);
 }
 
 ArchProcess * Process::byID(ProcessID id)
 {
-    return (ArchProcess *) procs[id];
+    if (id == SELF && scheduler->current())
+	return scheduler->current();
+    else
+	return (ArchProcess *) procs[id];
 }
 
 bool Process::operator == (Process *p)

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -17,8 +17,30 @@
 
 #ifndef __LIBCRT_RUNTIME_H
 #define __LIBCRT_RUNTIME_H
+#ifndef __ASSEMBLER__
 
 #include <Macros.h>
+#include <Init.h>
+
+/** 
+ * @defgroup libcrt libcrt (C/C++ runtime)
+ * @{ 
+ */
+
+/** Setup the dynamic memory heap. */
+#define HEAP "0"
+
+/** Constructors must be called. */
+#define CTOR "1"
+
+/** The default initialization level. */
+#define DEFAULT	"2"
+
+/** Start of initialization routines. */
+extern Address initStart;
+
+/** Marks the end of all initialization functions. */
+extern Address initEnd;
 
 /**
  * C(++) program entry point.
@@ -34,4 +56,9 @@ extern void (*CTOR_LIST)();
 /** List of destructors. */
 extern void (*DTOR_LIST)();
 
+/**
+ * @}
+ */
+
+#endif /* __ASSEMBLER__ */
 #endif /* __LIBCRT_RUNTIME_H */

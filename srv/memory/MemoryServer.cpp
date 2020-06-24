@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -16,94 +16,72 @@
  */
 
 #include "MemoryServer.h"
+#include "MemoryMessage.h"
 
-MemoryServer::MemoryServer()
+MemoryServer::MemoryServer() : IPCServer<MemoryServer, MemoryMessage>(this)
 {
+    /* Register message handlers. */
+    addIPCHandler(HeapGrow,    &MemoryServer::doGrow);
+    addIPCHandler(HeapShrink,  &MemoryServer::doShrink);
+    addIPCHandler(HeapReset,   &MemoryServer::doReset);
+    addIPCHandler(MemoryUsage, &MemoryServer::doUsage);
+
+    /* Initialize heaps. */
     for (Size i = 0; i < MAX_PROCS; i++)
     {
 	heaps[i] = HEAP_START;
     }
 }
-	
-int MemoryServer::run()
-{
-    MemoryMessage msg, reply;
 
-    /* Enter loop. */
-    while (true)
-    {
-	/* Now wait for a message. */
-	IPCMessage(ZERO, Receive, &msg);
-	
-	/* Handle incoming request. */
-	switch (msg.action)
-	{
-	    case HeapGrow:
-		doGrow(&msg, &reply);
-		break;
-	
-	    case HeapShrink:
-		doShrink(&msg, &reply);
-		break;
-	
-	    case MemoryUsage:
-		doUsage(&msg, &reply);
-		break;
-	
-	    default:
-		continue;
-	}
-	/* Fill in reply. */
-	reply.startAddr = HEAP_START;
-	reply.endAddr   = heaps[msg.from];
-	
-	/* Send reply. */
-	IPCMessage(msg.from, Send, &reply);
-    }
-    /* Satify compiler. */
-    return 0;
-}
-
-void MemoryServer::doGrow(MemoryMessage *msg, MemoryMessage *reply)
+void MemoryServer::doGrow(MemoryMessage *msg)
 {
     Size num = 0;
 
     /* Allocate virtual memory pages. */
     while (num < msg->bytes && heaps[msg->from] < HEAP_END)
     {
-	VMCtl(msg->from, ZERO, heaps[msg->from]);
+	VMCtl(Map, msg->from, ZERO, heaps[msg->from]);
 	heaps[msg->from] += PAGESIZE;
 	num += PAGESIZE;
     }
     /* Update reply. */
-    reply->bytes  = num;
-    reply->action = MemoryOK;
+    msg->bytes     = num;
+    msg->result    = ESUCCESS;
+    msg->startAddr = HEAP_START;
+    msg->endAddr   = heaps[msg->from];
 }
 
-void MemoryServer::doShrink(MemoryMessage *msg, MemoryMessage *reply)
+void MemoryServer::doShrink(MemoryMessage *msg)
 {
-    Size num;
+    Size num = 0;
     
     /* Release virtual memory pages. */
     while (num < msg->bytes && heaps[msg->from] > HEAP_END)
     {
-	VMCtl(msg->from, ZERO, heaps[msg->from] - MEMALIGN, ZERO);
+	VMCtl(Map, msg->from, ZERO, heaps[msg->from] - MEMALIGN, ZERO);
 	heaps[msg->from] -= PAGESIZE;
 	num += PAGESIZE;
     }
     /* Update reply. */
-    reply->bytes  = num;
-    reply->action = MemoryOK;
+    msg->bytes     = num;
+    msg->result    = ESUCCESS;
+    msg->startAddr = HEAP_START;
+    msg->endAddr   = heaps[msg->from];
 }
 
-void MemoryServer::doUsage(MemoryMessage *msg, MemoryMessage *reply)
+void MemoryServer::doUsage(MemoryMessage *msg)
 {
     SystemInformation info;
-
-    /* Retrieve system information. */
-    SystemInfo(&info);
     
     /* Fill in the reply. */
-    reply->bytes     = info.memorySize;
-    reply->bytesFree = info.memoryAvail;
+    msg->bytes     = info.memorySize;
+    msg->bytesFree = info.memoryAvail;
+}
+
+void MemoryServer::doReset(MemoryMessage *msg)
+{
+    if (msg->pid < MAX_PROCS)
+    {
+	heaps[msg->pid] = HEAP_START;
+    }
 }

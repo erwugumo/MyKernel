@@ -1,9 +1,0 @@
-Linux 内核中的 Makefile 以及与 Makefile 直接相关的文件有：
-Makefile：顶层 Makefile，是整个内核配置、编译的总体控制文件。
-.config：内核配置文件，包含由用户选择的配置选项，用来存放内核配置后的结果（如 make config）。
-arch/*/Makefile：位于各种 CPU 体系目录下的 Makefile，如 arch/arm/Makefile，是针对特定平台的 Makefile。
-各个子目录下的 Makefile：比如 drivers/Makefile，负责所在子目录下源代码的管理。
-Rules.make：规则文件，被所有的 Makefile 使用。
-顶层 Makefile 递归的进入到内核的各个子目录中，分别调用位于这些子目录中的 Makefile。
-Rules.make 文件起着非常重要的作用，它定义了所有 Makefile 共用的编译规则。
-来看看rules.mk的内容。

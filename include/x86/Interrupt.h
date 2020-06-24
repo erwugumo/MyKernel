@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,11 @@
 #include "CPU.h"
 #include <Types.h>
 #include <Macros.h>
+
+/**   
+ * @defgroup x86kernel kernel (x86)  
+ * @{   
+ */
 
 /**
  * Enables interrupts.
@@ -113,4 +118,8 @@ InterruptHook;
  */
 extern C void executeInterrupt(CPUState state);
 
-#endif /* __AMD64_INTERRUPT_H */
+/**
+ * @}
+ */
+
+#endif /* __X86_INTERRUPT_H */

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,11 @@
 
 #include <Types.h>
 #include "Allocator.h"
+
+/** 
+ * @defgroup liballoc liballoc 
+ * @{ 
+ */
 
 /**
  * Keeps growing allocated memory, and can't actually free memory (hence the name).
@@ -74,5 +79,9 @@ class BubbleAllocator : public Allocator
 	/** Size of the memory region. */
 	Size size;
 };
+
+/** 
+ * @}
+ */
 
 #endif /* __LIBALLOC_BUBBLEALLOCATOR_H */

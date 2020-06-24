@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -16,14 +16,14 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char **argv)
 {
-    printf("Init starting\n");
+    /*
+     * TODO: give up all priviledges: run us in priviledge level 0.
+     */
 
-    /* Lockup. */    
-    for (;;);
-
-    /* Satify compiler. */
-    return 0;
+    /* Exit immediately. */
+    return EXIT_SUCCESS;
 }

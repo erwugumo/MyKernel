@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,14 @@
 #ifndef __API_VMCOPY_H
 #define __API_VMCOPY_H
 
-#include <arch/Process.h>
-#include <arch/API.h>
+#include <FreeNOS/Process.h>
+#include <FreeNOS/API.h>
+#include <Error.h>
+
+/**  
+ * @defgroup kernelapi kernel (API) 
+ * @{  
+ */
 
 /** SystemCall number for VMCopy(). */
 #define VMCOPY 2
@@ -31,10 +37,16 @@
  * @param ours Virtual address of the buffer of this process.
  * @param theirs Virtual address of the remote process' buffer.
  * @param sz Amount of memory to copy.
+ * @return Total number of bytes copied on success and error code on failure.
  */
-inline int VMCopy(ProcessID proc, Action how, Address ours, Address theirs, Size sz)
+inline Error VMCopy(ProcessID proc, Action how, Address ours,
+				    Address theirs, Size sz)
 {
     return trapKernel5(VMCOPY, proc, how, ours, theirs, sz);
 }
+
+/**
+ * @}
+ */
 
 #endif /* __API_VMCOPY_H */

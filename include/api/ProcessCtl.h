@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,9 +18,15 @@
 #ifndef __API_PROCESSCTL_H
 #define __API_PROCESSCTL_H
 
-#include <arch/API.h>
-#include <arch/Process.h>
+#include <FreeNOS/API.h>
+#include <FreeNOS/Process.h>
+#include <Error.h>
 #include <Types.h>
+
+/**  
+ * @defgroup kernelapi kernel (API) 
+ * @{  
+ */
 
 /** SystemCall number for ProcessCtl(). */
 #define PROCESSCTL 4
@@ -29,16 +35,18 @@
  * Available operation to perform using PrivExec().
  * @see PrivExec
  */
-typedef enum ProcessAction
+typedef enum ProcessOperation
 {
     Spawn    = 0,
-    Kill     = 1,
+    KillPID  = 1,
     GetPID   = 2,
     AllowIO  = 3,
     WatchIRQ = 4,
-    Info     = 5,
+    InfoPID  = 5,
+    Schedule = 6,
+    Resume   = 7,
 }
-ProcessAction;
+ProcessOperation;
 
 /**
  * Process information structure, used for Info.
@@ -55,11 +63,15 @@ typedef struct ProcessInfo
  * @param op The operation to perform.
  * @param addr Argument address, used for program entry point for Spawn,
  *             ProcessInfo pointer for Info.
- * @return Never.
+ * @return Zero on success and error code on failure.
  */
-inline int ProcessCtl(ProcessID proc, ProcessAction op, Address addr = 0)
+inline Error ProcessCtl(ProcessID proc, ProcessOperation op, Address addr = 0)
 {
     return trapKernel3(PROCESSCTL, proc, op, addr);
 }
+
+/**
+ * @}
+ */
 
 #endif /* __API_PROCESSCTL_H */

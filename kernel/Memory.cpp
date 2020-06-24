@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,25 +15,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arch/Memory.h>
-#include <arch/Multiboot.h>
-#include <arch/Init.h>
-#include <arch/Kernel.h>
+#include <FreeNOS/Memory.h>
+#include <FreeNOS/Multiboot.h>
+#include <FreeNOS/Init.h>
+#include <FreeNOS/Kernel.h>
 #include <Allocator.h>
 #include <BubbleAllocator.h>
-#include <ListAllocator.h>
+#include <PoolAllocator.h>
 #include <Types.h>
 
 Size Memory::memorySize, Memory::memoryAvail;
-u8 *Memory::memoryMap, *Memory::memoryMapEnd;
+u8  *Memory::memoryMap, *Memory::memoryMapEnd;
 
 Memory::Memory()
 {
-    allocatePhysical(1024 * 1024 * 4, 0);
+    /* Marks kernel memory used. */
+    allocatePhysical(0x00400000, 0);
+    
+    /* Marks boot module memory. */
+    for (Size i = 0; i < multibootInfo.modsCount; i++)
+    {
+        MultibootModule *mod  = &((MultibootModule *) multibootInfo.modsAddress)[i];
+        Size modSize = mod->modEnd - mod->modStart;
+
+        /* Mark memory used. */
+        allocatePhysical(modSize, mod->modStart);
+    }
 }
 
 void Memory::initialize()
 {
+    Address page = 0x00300000;
+    Size meta = sizeof(BubbleAllocator) + sizeof(PoolAllocator);
+    Allocator *bubble, *pool;
+
     /* Save memory size. */
     memorySize  = (multibootInfo.memLower + multibootInfo.memUpper) * 1024;
     memoryAvail = memorySize;
@@ -47,26 +62,22 @@ void Memory::initialize()
     {
 	*p = 0;
     }
-    /* Allocate the initial heap. */
-    Address page = 0x00300000;
-    
     /* Setup the dynamic memory heap. */
-    Allocator *heap = new (page) ListAllocator(); //BubbleAllocator();
-		    
-    /* Point to the next free space. */
-    page += sizeof(ListAllocator); //BubbleAllocator);
-			    
+    bubble = new (page) BubbleAllocator();
+    pool   = new (page + sizeof(BubbleAllocator)) PoolAllocator();
+    pool->setParent(bubble);
+    
     /* Setup the heap region (1MB). */
-    heap->region(page, 1024 * 1024);
-				    
-    /* Use the heap as default allocator. */
-    Allocator::setDefault(heap);
+    bubble->region(page + meta, (1024 * 1024) - meta);
+
+    /* Set default allocator. */
+    Allocator::setDefault(pool);
 }
 
 Address Memory::allocatePhysical(Size sz, Address paddr)
 {
-    Address start = paddr, end = memorySize;
-    Address from = 0, count = 0;
+    Address start = paddr & PAGEMASK, end = memorySize;
+    Address from  = 0, count = 0;
 
     /* Loop the memoryMap for a free block. */
     for (Address i = start; i < end; i += PAGESIZE)
@@ -104,7 +115,7 @@ Address Memory::allocatePhysical(Size sz, Address paddr)
 
 void Memory::releasePhysical(Address addr)
 {
-    setMark(addr, false);
+    setMark(addr & PAGEMASK, false);
     memoryAvail += PAGESIZE;
 }
 
@@ -140,9 +151,9 @@ void Memory::setMark(Address addr, bool marked)
     Size bit   = (addr >> PAGESHIFT) % 8;
 
     if (marked)
-	memoryMap[index] |= 1 << bit;
+	memoryMap[index] |=  (1 << bit);
     else
-	memoryMap[index] &= ~(0xff & bit);
+	memoryMap[index] &= ~(1 << bit);
 }
 
 INITCLASS(Memory, initialize, PMEMORY)

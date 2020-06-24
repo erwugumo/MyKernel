@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -52,7 +52,6 @@ template <class T> class ListNode
  */
 template <class T> class List
 {
-    
     public:
 
 	/**

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,20 +15,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/IPCMessage.h>
-#include <arch/API.h>
-#include <arch/Init.h>
-#include <arch/Memory.h>
-#include <arch/Scheduler.h>
+#include <API/IPCMessage.h>
+#include <FreeNOS/API.h>
+#include <FreeNOS/Init.h>
+#include <FreeNOS/Memory.h>
+#include <FreeNOS/Scheduler.h>
+#include <Config.h>
 #include <Error.h>
 
-int IPCMessageHandler(ProcessID id, Action action, UserMessage *msg)
+int IPCMessageHandler(ProcessID id, Operation action, UserMessage *msg, Size size)
 {
     ArchProcess *proc;
-    UserMessage *newMessage;
 
     /* Verify memory read/write access. */
-    if (!memory->access(scheduler->current(), (Address) msg, sizeof(UserMessage)))
+    if (size > MAX_MESSAGE_SIZE || !memory->access(scheduler->current(),
+						  (Address) msg, sizeof(UserMessage)))
     {
 	return EFAULT;
     }
@@ -45,29 +46,40 @@ int IPCMessageHandler(ProcessID id, Action action, UserMessage *msg)
 	    /* Find the remote process to send to. */
 	    if (!(proc = Process::byID(id)))
 	    {
-		return ENOSUCH;
+		return ESRCH;
 	    }
-	    proc->getMessageQueue()->enqueue(new UserMessage(msg));
-	    proc->wakeup();
-	    if (action == Send) break;
+	    /* Put our message on their list, and try to let them execute! */
+	    proc->getMessages()->insertTail(new UserMessage(msg, size));
+	    scheduler->executeAttempt(proc);
+
+	    if (action == Send)
+		break;
 
 	case Receive:
 
-	    /* Wait until we have a message. */
+	    /* Block until we have a message. */
 	    while (true)
 	    {
-		if ((newMessage = scheduler->current()->getMessageQueue()->dequeue()))
+		/* Look for a message, with origin 'id'. */
+		for (ListIterator<UserMessage> i(scheduler->current()->getMessages());
+		     i.hasNext(); i++)
 		{
-		    *msg = *newMessage;
-		    delete newMessage;
-		    break;
+		    if (i.current()->from == id || id == ANY)
+		    {
+			memcpy(msg, i.current()->data, size < i.current()->size ?
+						       size : i.current()->size);
+			scheduler->current()->getMessages()->remove(i.current());
+			delete i.current();
+			return 0;
+		    }
 		}
 		/* Let some other process run while we wait. */
 		scheduler->current()->setState(Sleeping);
 		scheduler->executeNext();
 	    }
+
 	default:
-	    ;
+	    return EINVAL;
     }
     /* Success. */
     return 0;

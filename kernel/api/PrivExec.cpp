@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,23 +15,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/PrivExec.h>
-#include <arch/Init.h>
-#include <arch/Interrupt.h>
+#include <API/PrivExec.h>
+#include <FreeNOS/Init.h>
+#include <FreeNOS/Interrupt.h>
+#include <FreeNOS/Scheduler.h>
+#include <FreeNOS/CPU.h>
 #include <Error.h>
 
-int PrivExecHandler(PrivAction op)
+int PrivExecHandler(PrivOperation op)
 {
     switch (op)
     {
 	case Idle:
-	    irq_enable();
-	    while (true) idle();
 	    
+	    scheduler->setIdle(scheduler->current());
+	    irq_enable();
+	    
+	    while (true)
+		idle();
+	
+	case Reboot:
+	    reboot();
+	    while (true);
+	    
+	case Shutdown:
+	    shutdown();
+	    return ESUCCESS;
+
 	default:
 	    ;
     }
-    return EINVALID;
+    return EINVAL;
 }
 
 INITAPI(PRIVEXEC, PrivExecHandler)

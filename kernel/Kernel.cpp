@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,37 +15,80 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arch/Kernel.h>
-#include <arch/Process.h>
-#include <arch/Scheduler.h>
-#include <arch/Multiboot.h>
+#include <FreeNOS/Kernel.h>
+#include <FreeNOS/Memory.h>
+#include <FreeNOS/Process.h>
+#include <FreeNOS/Scheduler.h>
+#include <FreeNOS/Multiboot.h>
+#include <FreeNOS/BootImage.h>
+#include <String.h>
+
+// TODO: mark modStart - modEnd used in physical memory map!!!
 
 Kernel::Kernel()
 {
     MultibootModule *mod;
-    ArchProcess *modProc;
-    Address vstart = 0x80000000;
-    Size modSize;
+    BootImage *image;
+    String str;
 
-    /* Startup modules. */
+    /* Startup boot modules. */
     for (Size n = 0; n <  multibootInfo.modsCount; n++)
     {
 	mod     = &((MultibootModule *) multibootInfo.modsAddress)[n];
-	modProc = new ArchProcess(vstart);
-	modSize = mod->modEnd - mod->modStart;
 	
-	/* Map the module in virtual memory. */
-	for (Size i = 0; i < modSize; i += PAGESIZE)
+	/* Mark module memory used. */
+	memory->allocatePhysical(mod->modEnd - mod->modStart,
+				 mod->modStart);
+
+	/* Is this a BootImage? */
+	if (str.match((char *) mod->string, "*.img"))
 	{
-	    memory->mapVirtual(modProc, mod->modStart + i, vstart + i,
-			       PAGE_PRESENT|PAGE_USER|PAGE_RW);
-	}
-	/* HACK: allow VGA access. */
-	memory->mapVirtual(modProc, 0xb8000, 0x70000000,
-			   PAGE_PRESENT|PAGE_USER|PAGE_RW|PAGE_PINNED);
+	    /* Map the BootImage into our address space. */
+	    image = (BootImage *) memory->mapVirtual(mod->modStart);
+				  memory->mapVirtual(mod->modStart + PAGESIZE);
 	
-	/* Schedule the process. */
-	modProc->setState(Ready);
-	scheduler->enqueue(modProc);
+	    /* Verify this is a correct BootImage. */
+	    if (image->magic[0] == BOOTIMAGE_MAGIC0 &&
+	        image->magic[1] == BOOTIMAGE_MAGIC1 &&
+		image->layoutRevision == BOOTIMAGE_REVISION)
+	    {	    
+		/* Loop BootPrograms. */
+		for (Size i = 0; i < image->programsTableCount; i++)
+		{
+		    loadBootProcess(image, mod->modStart, i);
+		}
+	    }
+	}
     }
+}
+
+void Kernel::loadBootProcess(BootImage *image, Address imagePAddr, Size index)
+{
+    Address imageVAddr = (Address) image;
+    BootProgram *program;
+    BootSegment *segment;
+    ArchProcess *proc;
+    
+    /* Point to the program and segments table. */
+    program = &((BootProgram *) (imageVAddr + image->programsTableOffset))[index];
+    segment = &((BootSegment *) (imageVAddr + image->segmentsTableOffset))[program->segmentsOffset];
+
+    /* Create process. */
+    proc = new ArchProcess(program->entry);
+    proc->setState(Ready);
+		    
+    /* Loop program segments. */
+    for (Size i = 0; i < program->segmentsCount; i++)
+    {
+	/* Map program segment into it's virtual memory. */
+	for (Size j = 0; j < segment[i].size; j += PAGESIZE)
+	{
+	    memory->mapVirtual(proc,
+			       imagePAddr + segment[i].offset + j,
+			       segment[i].virtualAddress + j,
+			       PAGE_PRESENT | PAGE_USER | PAGE_RW);
+	}
+    }
+    /* Schedule process. */
+    scheduler->enqueue(proc);
 }

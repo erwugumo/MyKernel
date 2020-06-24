@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,13 @@
 #ifndef __LIBC_STRING_H
 #define __LIBC_STRING_H
 
-#include <Macros.h>
-#include <Types.h>
+#include <sys/types.h>
+#include "errno.h"
+
+/**
+ * @defgroup libc libc (ISO C99)
+ * @{
+ */
 
 /**
  * Compare two strings.
@@ -36,7 +41,7 @@ extern C int strcmp(char *dest, char *src);
  * @param count Maximum number of bytes to compare.
  * @return Zero if equal, non-zero if not.
  */
-extern C int strncmp(char *dest, char *src, Size count);
+extern C int strncmp(char *dest, char *src, size_t count);
 
 /**
  * Fill memory with a constant byte.
@@ -44,7 +49,7 @@ extern C int strncmp(char *dest, char *src, Size count);
  * @param ch Constant byte.
  * @return Pointer to dest.
  */
-extern C void * memset(void *dest, int ch, u32 count);
+extern C void * memset(void *dest, int ch, size_t count);
 
 /**
  * Copy memory from one place to another.
@@ -53,32 +58,14 @@ extern C void * memset(void *dest, int ch, u32 count);
  * @param count Number of bytes to copy.
  * @return The destination address.
  */
-extern C void * memcpy(void *dest, const void *src, u32 count);
-
-/**
- * Copy memory, which may overlap.
- * @param dest Destination address.
- * @param src Source address.
- * @param count Number of bytes to copy.
- * @return The destination address.
- */
-extern C void * memmove(void *dest, const void *src, u32 count);
-
-/**
- * Compare memory.
- * @param s1 First memory area.
- * @param s2 Second memory area.
- * @param count Number of bytes to compare.
- * @return <, = or > than zero, indicating s1 is <, =, or > then s2.
- */
-extern C int memcmp(const void *s1, const void *s2, u32 count);
+extern C void * memcpy(void *dest, const void *src, size_t count);
 
 /**
  * Calculate the length of a string.
  * @param str String to calculate length for.
  * @return Length of the string.
  */
-extern C int strlen(char *str);
+extern C size_t strlen(char *str);
 
 /**
  * Copy a string.
@@ -95,14 +82,77 @@ extern C int strcpy(char *dest, char *src);
  * @param sz Maximum number of bytes to copy.
  * @return Number of bytes copied.
  */
-extern C int strncpy(char *dest, char *src, u32 sz);
+extern C int strncpy(char *dest, char *src, size_t sz);
 
 /**
- * Append strings.
+ * Copy src to string dst of size siz. At most siz-1 characters 
+ * will be copied.  Always NUL terminates (unless siz == 0).
+ * @note This function is copied from OpenBSD-4.3
+ * @param dst Destination string
+ * @param src Source string
+ * @param siz size_t of dst buffer
+ * @return strlen(src); if retval >= siz, truncation occurred. 
+ */
+extern C size_t strlcpy(char *dst, const char *src, size_t siz);
+
+/**
+ * @brief Concatenate two strings.
+ * 
+ * The strcat() function shall append a copy of the string pointed to
+ * by s2 (including the terminating NUL character) to the end of the
+ * string pointed to by s1.
+ * 
  * @param dest Destination string.
- * @param src String to be appended to the dest.
- * @return Pointer to the resulting string.
+ * @param src Source string.
+ * @return The strcat() function shall return s1; no return value is
+ *         reserved to indicate an error.
  */
 extern C char * strcat(char *dest, char *src);
+
+/**
+ * @brief Concatenate a string with part of another
+ *
+ * The strncat() function shall append not more than n bytes (a NUL
+ * character and bytes that follow it are not appended) from the array
+ * pointed to by s2 to the end of the string pointed to by s1. The initial
+ * byte of s2 overwrites the NUL character at the end of s1. A terminating
+ * NUL character is always appended to the result. If copying takes place
+ * between objects that overlap, the behavior is undefined.
+ * 
+ * @param dest Destination string.
+ * @param src Source string.
+ * @param n Number of character to concatenate.
+ * @return The strncat() function shall return s1; no return value
+ *         shall be reserved to indicate an error.
+ */
+extern C char * strncat(char *dest, char *src, size_t siz);
+
+/**
+ * The strerror function maps the number in errnum to a message string.
+ * @param errnum Error number to convert.
+ * @return The strerror function returns a pointer to the string, the contents
+ *         of which are locale specific. The array pointed to shall not be modified
+ *         by the program, but may be overwritten by a subsequent call to the
+ *         strerror function.
+ */
+extern C char * strerror(int errnum);
+
+/**
+ * @brief String scanning operation.
+ *
+ * The strchr() function shall locate the first occurrence of c
+ * (converted to a char) in the string pointed to by s. The terminating
+ * NULL character is considered to be part of the string.
+ *
+ * @param s String to search in.
+ * @param c Character to look for.
+ * @return Upon completion, strchr() shall return a pointer to the byte,
+ *         or a null pointer if the byte was not found.
+ */
+extern C char * strchr(const char *s, int c);
+
+/**
+ * @}
+ */
 
 #endif /* __LIBC_STRING_H */

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -19,6 +19,11 @@
 #define __KERNEL_SUPPORT_H
 
 #include <Macros.h>
+
+/** 
+ * @defgroup kernel kernel (generic)
+ * @{ 
+ */
 
 /**
  * Invokes all function pointers inside the .ctors section.
@@ -44,5 +49,9 @@ extern void (*CTOR_LIST)();
  * Destructor list.
  */
 extern void (*DTOR_LIST)();
+
+/**
+ * @}
+ */
 
 #endif /* __KERNEL_SUPPORT_H */

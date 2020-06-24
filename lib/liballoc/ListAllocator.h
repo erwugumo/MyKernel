@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -21,14 +21,31 @@
 #include <Types.h>
 #include "Allocator.h"
 
+/** 
+ * @defgroup liballoc liballoc 
+ * @{ 
+ */
+
+/** Magic cookie is used to detect heap corruption. */
+#define LISTALLOC_MAGIC 0x1234abcd
+
+/** @see MemRegion. */
+class MemRegion;
+
 /**
  * Memory block on a Heap.
  */
 typedef struct MemBlock
 {
-    /** Linked List. */
+    /** Magic cookie. */
+    ulong magic;
+    
+    /** Memory region for this block. */
+    MemRegion *region;
+
+    /** Points to the previous and next entry. */
     MemBlock *prev, *next;
-	
+
     /** Size of the data block (excluding our size). */
     Size size;
     
@@ -36,6 +53,28 @@ typedef struct MemBlock
     u8 free:1;
 }
 MemBlock;
+
+/**
+ * Contigeous memory region block.
+ */
+typedef struct MemRegion
+{
+    /** Magic cookie. */
+    ulong magic;
+
+    /** Total size in this region. */
+    Size size;
+
+    /** Amount of free memory. */
+    Size free;
+
+    /** Head of the memory blocks. */
+    MemBlock *blocks;
+
+    /** The next region, if any. */
+    MemRegion *next;
+}
+MemRegion;
 
 /**
  * Dynamic memory allocation class.
@@ -84,18 +123,17 @@ class ListAllocator : public Allocator
 	/**
 	 * Find a free MemBlock.
 	 * @param size Minimum size of the block.
+	 * @param askParent Whether to ask our parent for more if not enough memory.
 	 * @return A MemBlock pointer.
 	 */
-	MemBlock * findFreeBlock(Size size);
+	MemBlock * findFreeBlock(Size size, bool askParent);
     
-        /** Start of the list. */
-	MemBlock *head;
-	
-	/** End of the memory list. */
-	MemBlock *tail;
-    
-        /** Maximum total amount of memory for the Heap. */
-        Size limit;
+        /** Memory region list. */
+	MemRegion *regions;
 };
+
+/**
+ * @}
+ */
 
 #endif /* __LIBALLOC_LISTALLOCATOR_H */

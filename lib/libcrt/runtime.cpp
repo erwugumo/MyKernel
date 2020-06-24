@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,14 +15,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/ProcessCtl.h>
-#include <arch/Memory.h>
+#include <FreeNOS/Memory.h>
 #include <Types.h>
-#include <Config.h>
 #include <Macros.h>
 #include <Init.h>
 #include <PageAllocator.h>
-#include <ListAllocator.h>
+#include <PoolAllocator.h>
+#include <stdlib.h>
 #include "runtime.h"
 
 extern C int __cxa_atexit(void (*func) (void *), void * arg, void * dso_handle)
@@ -38,44 +37,62 @@ extern C void __dso_handle()
 {
 }
 
-extern C void SECTION(".entry") _entry() 
+extern C void __stack_chk_fail(void)
 {
-    void (**ctor)(), (**dtor)();
-    char *argv[] = {"main", ZERO };
+}
 
-    /* Setup heap. */
-    if (ProcessCtl(ZERO, GetPID, ZERO) != MEMORY_PID)
-    {
-	PageAllocator pa(PAGESIZE * 4), *p;
-        ListAllocator *li;
-	Address heapAddr = pa.getHeapStart(), heapOff;
-    
-        /* Allocate instance copy on vm pages itself. */
-        p  = new (heapAddr) PageAllocator(&pa);
-        li = new (heapAddr + sizeof(PageAllocator)) ListAllocator();
-    
-        /* Point to the next free space. */
-        heapOff   = sizeof(PageAllocator) + sizeof(ListAllocator);
-        heapAddr += heapOff;
-
-        /* Setup the userspace heap allocator region. */
-        li->region(heapAddr, (PAGESIZE * 4) - heapOff);
-        li->setParent(p);
-
-	/* Set default allocator. */
-        Allocator::setDefault(li);
-    }
-    /* Run constructors. */
-    for (ctor = &CTOR_LIST; ctor && *ctor; ctor++)
+void constructors()
+{
+    for (void (**ctor)() = &CTOR_LIST; ctor && *ctor; ctor++)
     {
         (*ctor)();
     }
-    /* Pass control to the program. */
-    main(1, argv);
+}
 
-    /* Run destructors. */
-    for (dtor = &DTOR_LIST; dtor && *dtor; dtor++)
+void destructors()
+{
+    for (void (**dtor)() = &DTOR_LIST; dtor && *dtor; dtor++)
     {
         (*dtor)();
     }
 }
+
+void heap()
+{
+    PageAllocator pa(PAGESIZE * 4), *p;
+    PoolAllocator *li;
+    Address heapAddr = pa.getHeapStart(), heapOff;
+    
+    /* Allocate instance copy on vm pages itself. */
+    p  = new (heapAddr) PageAllocator(&pa);
+    li = new (heapAddr + sizeof(PageAllocator)) PoolAllocator();
+    
+    /* Point to the next free space. */
+    heapOff   = sizeof(PageAllocator) + sizeof(PoolAllocator);
+    heapAddr += heapOff;
+
+    /* Setup the userspace heap allocator region. */
+    li->region(heapAddr, (PAGESIZE * 4) - heapOff);
+    li->setParent(p);
+
+    /* Set default allocator. */
+    Allocator::setDefault(li);
+}
+
+extern C void SECTION(".entry") _entry() 
+{
+    char *argv[] = { "main", ZERO };
+    int ret;
+
+    /* Run initialization. */
+    INITRUN(&initStart, &initEnd);
+    
+    /* Pass control to the program. */
+    ret = main(1, argv);
+    
+    /* Terminate execution. */
+    exit(ret);
+}
+
+INITFUNC(heap, HEAP)
+INITFUNC(constructors, CTOR)

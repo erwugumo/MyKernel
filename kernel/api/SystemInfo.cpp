@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/SystemInfo.h>
+#include <API/SystemInfo.h>
+#include <string.h>
 
 int SystemInfoHandler(SystemInformation *info)
 {
@@ -30,8 +31,7 @@ int SystemInfoHandler(SystemInformation *info)
     info->memorySize  = memory->getTotalMemory();
     info->memoryAvail = memory->getAvailableMemory();
     info->moduleCount = multibootInfo.modsCount;
-    info->cmdline[63] = ZERO;
-    strncpy(info->cmdline, (char *)multibootInfo.cmdline, 64);
+    strlcpy(info->cmdline, (char *)multibootInfo.cmdline, 64);
     
     /* Include multiboot modules information. */
     for (Size i = 0; i < info->moduleCount; i++)

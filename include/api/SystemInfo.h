@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,50 @@
 #ifndef __API_SYSTEMINFO_H
 #define __API_SYSTEMINFO_H
 
-#include <arch/API.h>
-#include <arch/Init.h>
-#include <arch/Multiboot.h>
-#include <arch/Memory.h>
+#include <FreeNOS/API.h>
+#include <FreeNOS/Init.h>
+#include <FreeNOS/Multiboot.h>
+#include <FreeNOS/Memory.h>
 #include <Version.h>
 #include <Error.h>
 #include <Types.h>
 
+/**  
+ * @defgroup kernelapi kernel (API) 
+ * @{  
+ */
+
 /** SystemCall number for SystemInfo(). */
 #define SYSTEMINFO 6
+
+/**
+ * Forward declaration.
+ * @see SystemInformation
+ */
+class SystemInformation;
+
+/**
+ * Prototype for user applications. Retrieves system information.
+ * @param buf Target buffer.
+ */
+inline Error SystemInfo(SystemInformation *info)
+{
+    return trapKernel1(SYSTEMINFO, (Address) info);
+}
 
 /**
  * System information structure.
  */
 typedef struct SystemInformation
 {
+    /**
+     * Constructor function.
+     */
+    SystemInformation()
+    {
+	SystemInfo(this);
+    }
+
     /** System version. */
     ulong version;
     
@@ -62,12 +90,7 @@ typedef struct SystemInformation
 SystemInformation;
 
 /**
- * Prototype for user applications. Retrieves system information.
- * @param buf Target buffer.
+ * @}
  */
-inline int SystemInfo(SystemInformation *info)
-{
-    return trapKernel1(SYSTEMINFO, (Address) info);
-}
 
 #endif /* __API_SYSTEMINFO_H */

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,25 +18,37 @@
 #ifndef __API_VMCTL_H
 #define __API_VMCTL_H
 
-#include <arch/Process.h>
-#include <arch/API.h>
-#include <arch/Memory.h>
+#include <FreeNOS/Process.h>
+#include <FreeNOS/API.h>
+#include <FreeNOS/Memory.h>
+#include <Error.h>
 #include <Types.h>
+
+/**  
+ * @defgroup kernelapi kernel (API) 
+ * @{  
+ */
 
 /** SystemCall number for VMCtl(). */
 #define VMCTL 5
 
 /**
- * Prototype for user applications. Modifies virtual memory pages.
+ * Prototype for user applications. Examines and modifies virtual memory pages.
+ * @param action Determines which action to perform.
  * @param proc Remote process.
  * @param paddr Physical address which we map. ZERO to pick a free paddr.
  * @param vaddr Virtual address to map paddr.
  * @param prot Protection bits. Set PAGE_PRESENT to allocate, ~PAGE_PRESENT to release.
+ * @return Zero on success or error code on failure.
  */
-inline int VMCtl(ProcessID proc, Address paddr, Address vaddr,
-		 ulong prot = PAGE_PRESENT|PAGE_USER|PAGE_RW)
+inline Error VMCtl(Action action, ProcessID proc, Address paddr,
+		   Address vaddr, ulong prot = PAGE_PRESENT|PAGE_USER|PAGE_RW)
 {
-    return trapKernel4(VMCTL, proc, paddr, vaddr, prot);
+    return trapKernel5(VMCTL, action, proc, paddr, vaddr, prot);
 }
+
+/**
+ * @}
+ */
 
 #endif /* __API_VMCTL_H */

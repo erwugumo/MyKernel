@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,14 @@
 #ifndef __API_PRIVEXEC_H
 #define __API_PRIVEXEC_H
 
-#include <arch/API.h>
+#include <FreeNOS/API.h>
+#include <Error.h>
+#include <Types.h>
+
+/**  
+ * @defgroup kernelapi kernel (API) 
+ * @{  
+ */
 
 /** SystemCall number for PrivExec(). */
 #define PRIVEXEC 3
@@ -27,22 +34,26 @@
  * Available operations to perform using PrivExec().
  * @see PrivExec
  */
-typedef enum PrivAction
+typedef enum PrivOperation
 {
-    Idle,
-    Reboot,
-    Shutdown,
+    Idle     = 0,
+    Reboot   = 1,
+    Shutdown = 2,
 }
-PrivAction;
+PrivOperation;
 
 /**
  * Prototype for user applications. Performs various priviledged operations.
  * @param op The operation to perform.
- * @return Never.
+ * @return Zero on success and error code on failure.
  */
-inline int PrivExec(PrivAction op)
+inline Error PrivExec(PrivOperation op)
 {
     return trapKernel1(PRIVEXEC, op);
 }
+
+/**
+ * @}
+ */
 
 #endif /* __API_PRIVEXEC_H */

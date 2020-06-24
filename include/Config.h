@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -19,16 +19,19 @@
 #define __CONFIG_H
 
 /**
- * @defgroup pids Temporary hardcoded PIDS.
+ * @brief Static PIDS.
  * @{
  */
 
-#define KERNEL_PID	-1
-#define TERMINAL_PID	0
-#define INIT_PID	1
-#define IDLE_PID	2
-#define SH_PID		3
-#define MEMORY_PID	4
+#define ANY		65535
+#define SELF		65534
+#define KERNEL		65533
+
+#define PROCSRV_PID	0
+#define VFSSRV_PID	1
+#define MEMSRV_PID	2
+#define DEVSRV_PID	3
+#define LOGSRV_PID	4
 
 /**
  * @}

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,9 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/IPCMessage.h>
-#include <api/ProcessCtl.h>
-#include <MemoryServer.h>
+#include <API/IPCMessage.h>
+#include <API/ProcessCtl.h>
+#include <MemoryMessage.h>
+#include <Config.h>
 #include "PageAllocator.h"
 
 PageAllocator::PageAllocator()
@@ -40,29 +41,25 @@ PageAllocator::PageAllocator(PageAllocator *p)
 Address PageAllocator::allocate(Size *size)
 {
     MemoryMessage msg;
-    Address ret = heapStart + allocated;
+    Address ret  = heapStart + allocated;
+    Size bytes = *size > PAGEALLOC_MINIMUM ? *size : PAGEALLOC_MINIMUM;
 
-    /* Do we need to allocate more pages? */
-    if (heapEnd - (heapStart + allocated) < *size)
-    {
-	/* Fill in the message. */
-	msg.action =  HeapGrow;
-        msg.bytes  = *size;
+    /* Fill in the message. */
+    msg.action =  HeapGrow;
+    msg.bytes  =  bytes;
 
-	/* Grow heap. */
-        if (ProcessCtl(ZERO, GetPID, ZERO) != MEMORY_PID)
-	    IPCMessage(MEMORY_PID, SendReceive, &msg);
-	else
-    	    IPCMessage(MEMORY_PID, Send, &msg);
+    /* Grow heap. */
+    IPCMessage(MEMSRV_PID, SendReceive, &msg, sizeof(msg));
 
-	/* Update heap pointers. */
-	heapStart  = msg.startAddr;
-	heapEnd    = msg.endAddr;
-    }
+    /* Update heap pointers. */
+    heapStart  = msg.startAddr;
+    heapEnd    = msg.endAddr;
+
     /* Update count. */
-    allocated += *size;
+    allocated += msg.bytes;
 
     /* Success. */
+    *size = msg.bytes;
     return ret;
 }
 
@@ -80,7 +77,7 @@ void PageAllocator::release(Address addr)
 	    msg.bytes  =  PAGESIZE;
 	    
 	    /* Shrink heap. */
-	    IPCMessage(MEMORY_PID, SendReceive, &msg);
+	    IPCMessage(MEMSRV_PID, SendReceive, &msg, sizeof(msg));
 	}
     }
     /* Update counter. */

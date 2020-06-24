@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -19,12 +19,16 @@
 #define __KERNEL_PROCESS_H
 #ifndef __ASSEMBLER__
 
-#include <arch/Interrupt.h>
+#include <FreeNOS/Interrupt.h>
 #include <Types.h>
 #include <Vector.h>
-#include <Queue.h>
 #include <List.h>
 #include "Scheduler.h"
+
+/** 
+ * @defgroup kernel kernel (generic)
+ * @{ 
+ */
 
 /** Maximum number of processes. */
 #define MAX_PROCS 1024
@@ -44,15 +48,11 @@ typedef enum ProcessState
 }
 ProcessState;
 
-/** Process Identification Number. */
-typedef Size ProcessID;
-
 /**
  * Represents a process which may run on the host.
  */
 class Process
 {
-//    friend class Scheduler;
     public:
     
 	/**
@@ -64,7 +64,7 @@ class Process
 	/**
 	 * Destructor function.
 	 */
-	~Process();
+	virtual ~Process();
 
 	/**
 	 * Retrieve our ID number.
@@ -113,12 +113,12 @@ class Process
 	}
 
 	/**
-	 * Retrieve the Message queue for this Process.
+	 * Retrieve the list of Messages for this Process.
 	 * @return Pointer to the message queue.
 	 */
-	Queue<UserMessage> * getMessageQueue()
+	List<UserMessage> * getMessages()
 	{
-	    return &messageQueue;
+	    return &messages;
 	}
 
 	/**
@@ -158,14 +158,14 @@ class Process
 
     private:
     
-	/** Current process status. */    
+	/** Current process status. */
 	ProcessState status;
 	
 	/** Unique ID number. */
 	ProcessID pid;
 	
-	/** Message queue. */
-	Queue<UserMessage> messageQueue;
+	/** Incoming messages. */
+	List<UserMessage> messages;
 
 	/** Processes waiting to be woken up. */
 	static List<Process> wakeups;
@@ -173,6 +173,10 @@ class Process
 	/** All known Processes. */
 	static Vector<Process> procs;
 };
+
+/**
+ * @}
+ */
 
 #endif /* __ASSEMBLER__ */
 #endif /* __KERNEL_PROCESS_H */

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arch/Support.h>
-#include <arch/Init.h>
+#include <FreeNOS/Support.h>
+#include <FreeNOS/Init.h>
 #include <Macros.h>
 
 extern C void constructors()
@@ -40,6 +40,10 @@ extern C void __cxa_pure_virtual()
 }
 
 extern C void __dso_handle()
+{
+}
+
+extern C void __stack_chk_fail(void)
 {
 }
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,32 +15,48 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/VMCtl.h>
+#include <API/VMCtl.h>
 #include <Error.h>
+#include <Config.h>
 
-int VMCtlHandler(ProcessID procID, Address paddr, Address vaddr,
-		 ulong prot = PAGE_PRESENT|PAGE_USER|PAGE_RW)
+Error VMCtlHandler(Operation action, ProcessID procID, Address paddr,
+		   Address vaddr, ulong prot = PAGE_PRESENT|PAGE_USER|PAGE_RW)
 {
-    ArchProcess *proc;
+    ArchProcess *proc = ZERO;
+    Address page = ZERO;
     
     /* Find the given process. */
     if (!(proc = Process::byID(procID)))
     {
-	return ENOSUCH;
+	return ESRCH;
     }
-    /* Map the memory page. */
-    if (prot & PAGE_PRESENT)
+    switch (action)
     {
-	memory->mapVirtual(proc, paddr ? paddr : memory->allocatePhysical(PAGESIZE),
-			   vaddr, prot & ~PAGEMASK);
-    }
-    /* Release memory page (if not pinned). */
-    else if (!memory->access(proc, vaddr, PAGE_PINNED))
-    {
-	memory->releasePhysical(memory->virtualToPhysical(proc, vaddr));
+	case Lookup:
+	    return ENOTSUP;
+	    // TODO: return memory->lookupVirtual(proc, vaddr);
+
+	case Map:
+	    /* Map the memory page. */
+	    if (prot & PAGE_PRESENT)
+	    {
+		page = paddr ? paddr : memory->allocatePhysical(PAGESIZE);
+		memory->mapVirtual(proc, page, vaddr, prot & ~PAGEMASK);
+	    }
+	    /* Release memory page (if not pinned). */
+	    else if (!memory->access(proc, vaddr, PAGE_PINNED))
+	    {
+		page = memory->lookupVirtual(proc, vaddr) & PAGEMASK;
+		memory->releasePhysical(page);
+	    }
+	    break;
+	    
+	default:
+	    return EINVAL;
+	
     }
     /* Success. */
-    return (0);
+    return 0;
 }
 
 INITAPI(VMCTL, VMCtlHandler)

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,145 +15,137 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/IPCMessage.h>
-#include <api/VMCopy.h>
+#include <API/IPCMessage.h>
+#include <API/VMCopy.h>
+#include <API/VMCtl.h>
+#include <API/ProcessCtl.h>
 #include <Types.h>
 #include <Version.h>
+#include <IPCServer.h>
+#include <FileSystem.h>
+#include <FileSystemMessage.h>
+#include <ProcessMessage.h>
 #include "TerminalServer.h"
+#include "Terminal.h"
+#include "Keyboard.h"
 
-/**
- * Short banner to print out startup.
- */
-#define BANNER \
-    "FreeNOS " RELEASE " (" BUILDUSER "@" BUILDHOST ") (" COMPILER ") " DATETIME "\n"
-
-/**
- * Macro to output a message from inside the MemoryServer.
- * @param str Static character string to print out.
- */
-#define OUTPUT(str) \
-({ \
-    TerminalMessage msg; \
-    \
-    /* Construct message. */ \
-    msg.action = TerminalWrite; \
-    msg.buffer = str; \
-    msg.size   = strlen(str); \
-    \
-    /* Output banner. */ \
-    IPCMessage(TERMINAL_PID, Send, &msg); \
-})
-
-TerminalServer::TerminalServer() : reading(false)
+TerminalServer::TerminalServer()
+    : IPCServer<TerminalServer, FileSystemMessage>(this), current(ZERO)
 {
-    /* Clear VGA. */
-    vga.clear();
+    FileSystemMessage fs;
+    ProcessMessage proc;
+    Terminal *term;
+    char path[PATHLEN];
 
-    /* Output banner and copyrights. */
-    OUTPUT(BANNER);
-    OUTPUT(COPYRIGHT);
-}
+    /* Register IPC handlers. */
+    addIPCHandler(OpenFile,  &TerminalServer::openFileHandler,  true);
+    addIPCHandler(ReadFile,  &TerminalServer::readWriteHandler, false);
+    addIPCHandler(WriteFile, &TerminalServer::readWriteHandler, false);
+    addIRQHandler(PS2_IRQ,   &TerminalServer::interruptHandler);
+
+    /* Request VGA memory. */
+    VMCtl(Map, SELF, VGA_PADDR, VGA_VADDR,
+	  PAGE_PRESENT | PAGE_USER | PAGE_RW | PAGE_PINNED);
+
+    /* Request PS2 keyboard I/O port and IRQ. */
+    ProcessCtl(SELF, AllowIO,  PS2_PORT);
+    ProcessCtl(SELF, WatchIRQ, PS2_IRQ);
+
+    /* Create terminals. */
+    for (int i = 0; i < NUM_TERMINALS; i++)
+    {
+	/* Fill in correct path. */
+	snprintf(path, sizeof(path), "/dev/tty%d", i);
 	
-int TerminalServer::run()
-{
-    TerminalMessage msg;
-
-    /* Enter loop. */
-    while (true)
-    {
-	/* Now wait for a message. */
-	IPCMessage(ZERO, Receive, &msg);
-
-	/* Handle various message types. */
-	switch (msg.type)
-	{
-	    /* Flush I/O buffers. */
-	    case IRQType:
-		doIRQ((InterruptMessage *) &msg);
-		break;
-
-	    /* Incoming user message. */
-	    case IPCType:
-
-		/* Perform appropriate action. */
-		switch (msg.action)
-		{
-		    case TerminalRead:
-			doRead(&msg);
-			break;
-		    
-		    case TerminalWrite:
-			doWrite(&msg);
-			break;
-		
-		    default:
-			continue;
-		}	
-		break;
-		
-	    default:
-		;
-	}
+	/* Create device file. */
+	fs.createFile(path, CharacterDeviceFile, 0600, proc.pid(), i);
+	
+	/* Allocate a Terminal. */
+	term = new Terminal;
+	terminals.insert(i, term);
+	
+	/* Print banner and copyright notice. */
+	term->write(BANNER,    strlen(BANNER));
+	term->write(COPYRIGHT, strlen(COPYRIGHT));
     }
-    /* Satify compiler. */
-    return 0;
+    /* Points to the currently active console. */
+    snprintf(path, sizeof(path), "/dev/console");
+    fs.createFile(path, CharacterDeviceFile, 0200, proc.pid(), CONSOLE);
+    
+    /* Activate current console. */
+    current = terminals[0];
+    current->activate();
 }
 
-void TerminalServer::doIRQ(InterruptMessage *msg)
+void TerminalServer::openFileHandler(FileSystemMessage *msg)
 {
-    vga.flush();
-    ps2.flush();
-    uart.flush();
-    
-    if (reading)
-	doRead(&lastRead);
-}
+    // TODO: Check that the given terminal isn't already opened.
+    msg->action = IODone;
+    msg->result = ESUCCESS;
 
-void TerminalServer::doRead(TerminalMessage *msg)
-{
-    TerminalMessage reply;
-    s8 buf[BUFFERSIZE];
-    Size sz = msg->size > sizeof(buf) ? sizeof(buf) : msg->size;
-    
-    /* Attempt to read a message. */
-    if ((reply.size = uart.bufferedRead(buf, sz)) > 0 ||
-        (reply.size = ps2.bufferedRead(buf, sz)) > 0)
+#if 0
+    /* Check that the given terminal isn't already opened. */
+    if (msg->deviceID.minor < NUM_TERMINALS &&
+        !terminals[msg->deviceID.minor])
     {
-	/* Copy to remote process. */
-	VMCopy(msg->from, Write, (Address) &buf, (Address) msg->buffer, sz);
-    
-	/* Success. */
-	reply.action = TerminalOK;
-	IPCMessage(msg->from, Send, &reply);
-	reading      = false;
     }
-    /* Save the request. */
+    /* Or are we opening the currently active console? */
+    else if (msg->deviceID.minor == CONSOLE)
+	reply->result = ESUCCESS;
+	
+    /* Request cannot be allowed. */
     else
+	reply->result = EACCES;
+#endif
+}
+
+void TerminalServer::readWriteHandler(FileSystemMessage *msg)
+{
+    char buffer[128];
+
+    /* Calculate the number of bytes to copy. */
+    Size num = msg->size < sizeof(buffer) ?
+               msg->size : sizeof(buffer);
+
+    switch (msg->action)
     {
-	lastRead = msg; 
-	reading  = true;
+	case WriteFile:
+	
+	    /* Write to the VGA terminal. */
+	    if ((num = VMCopy(msg->procID, Read, (Address) buffer,
+			     (Address) msg->buffer, num)) > 0)
+	    {
+		current->write(buffer, num);
+		msg->ioDone(msg->from, msg->procID,
+			    num, ESUCCESS);
+	    }
+	    break;
+
+	case ReadFile:
+	
+	    /* Read from the keyboard buffer. */
+	    if ((num = current->read(buffer, num)) > 0)
+	    {
+		VMCopy(msg->procID, Write, (Address) buffer,
+		      (Address) msg->buffer, num);
+		current->setRequest(ZERO);
+		msg->ioDone(msg->from, msg->procID, num, ESUCCESS);
+	    }
+	    else
+		current->setRequest(msg);
+	    break;
+
+	default:
+	    ;
     }
 }
 
-void TerminalServer::doWrite(TerminalMessage *msg)
+void TerminalServer::interruptHandler(InterruptMessage *msg)
 {
-    TerminalMessage reply;
-    s8 buf[BUFFERSIZE];
-    Size sz = msg->size > sizeof(buf) ? sizeof(buf) : msg->size;
-
-    /* Copy the string. */
-    VMCopy(msg->from, Read, (Address) &buf, (Address) msg->buffer, sz);
-	
-    /* Write to our Terminals. */
-    vga.bufferedWrite(buf, sz);
-    reply.size   = uart.bufferedWrite(buf, sz);
-    reply.action = TerminalOK;
-
-    /* Send Reply. */
-    IPCMessage(msg->from, Send, &reply);
-
-    /* Flush buffers. */
-    vga.flush();
-    uart.flush();
+    /* Attempt to read/write more. */
+    if (current->flush() && current->getRequest())
+    {
+	/* Further process the currently active request. */
+	readWriteHandler(current->getRequest());
+    }
 }
-

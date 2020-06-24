@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,17 @@
 #ifndef __LIBALLOC_PAGEALLOCATOR_H
 #define __LIBALLOC_PAGEALLOCATOR_H
 
+#include <FreeNOS/Memory.h>
 #include <Types.h>
 #include "Allocator.h"
+
+/** 
+ * @defgroup liballoc liballoc 
+ * @{ 
+ */
+
+/** Minimum size required to allocate. */
+#define PAGEALLOC_MINIMUM (PAGESIZE * 2)
 
 /**
  * Allocates virtual memory using the memory server.
@@ -80,5 +89,9 @@ class PageAllocator : public Allocator
 	/** Total number of bytes allocated. */
 	Size allocated;
 };
+
+/**
+ * @}
+ */
 
 #endif /* __LIBALLOC_PAGEALLOCATOR_H */

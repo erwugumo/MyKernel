@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,25 +15,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arch/Scheduler.h>
-#include <arch/Init.h>
-#include <Queue.h>
+#include <FreeNOS/Scheduler.h>
+#include <FreeNOS/Init.h>
+#include <List.h>
+#include <ListIterator.h>
 #include <Macros.h>
 
-Scheduler::Scheduler() : currentProcess(ZERO), oldProcess(ZERO)
+Scheduler::Scheduler()
+    : currentProcess(ZERO), oldProcess(ZERO), idleProcess(ZERO)
 {
+    queuePtr.reset(&queue);
 }
 
 void Scheduler::executeNext()
 {
     ArchProcess *next;
 
-    /* Push current process back on the queue. */
-    if (currentProcess)
-    {
-	queue.enqueue(currentProcess);
-	oldProcess = currentProcess;
-    }
+    /* Save the old process. */
+    oldProcess = currentProcess ? currentProcess : ZERO;
+
     /* Process any pending wakeups. */
     for (ListIterator<Process> i(Process::getWakeups()); i.hasNext(); i++)
     {
@@ -44,14 +44,10 @@ void Scheduler::executeNext()
 	    Process::getWakeups()->remove(i.current());
 	}
     }
-    /* Grab first process. */
-    next = queue.dequeue();
-    
     /* Find the next ready Process in line. */
-    while (next->getState() != Ready)
+    if (!(next = findNextReady()))
     {
-	queue.enqueue(next);
-	next = queue.dequeue();
+	next = idleProcess;
     }
     /* Update current. */
     currentProcess = next;
@@ -63,14 +59,71 @@ void Scheduler::executeNext()
     }
 }
 
+void Scheduler::executeAttempt(ArchProcess *p)
+{
+    /* Wakeup process if needed. */
+    if (p->getState() == Sleeping)
+    {
+	p->setState(Ready);
+        Process::getWakeups()->remove(p);
+    }
+    /* Update pointers. */
+    oldProcess = currentProcess;
+    currentProcess = p;
+    
+    /* Execute it. */
+    p->execute();
+}
+
 void Scheduler::enqueue(ArchProcess *proc)
 {
-    queue.enqueue(proc);
+    queue.insertTail(proc);
 }
 
 void Scheduler::dequeue(ArchProcess *proc)
 {
-    queue.dequeue(proc);
+    queue.remove(proc);
+    queuePtr.reset(&queue);
+
+    if (currentProcess == proc)
+	currentProcess = ZERO;
+
+    if (oldProcess == proc)
+	oldProcess = ZERO;
+}
+
+ArchProcess * Scheduler::findNextReady()
+{
+    ArchProcess *ret = ZERO, *saved = ZERO;
+
+    while (!ret)
+    {
+	/* Search the whole list. */
+	while (queuePtr.hasNext())
+	{
+	    /* Save the current. */
+	    if (!saved)
+		saved = queuePtr.current();
+	
+	    /* We walked the whole list already. */
+	    else if (queuePtr.current() == saved)
+	    {
+		return ret;
+	    }
+	    /* Is this process ready? */
+	    if (queuePtr.current()->getState() == Ready)
+	    {
+		ret = queuePtr.current();
+		queuePtr++;
+		return ret;
+	    }
+	    /* Try the next. */
+	    queuePtr++;
+	}
+	/* Start again at the front. */
+	queuePtr.reset(&queue);
+    }
+    return ret;
 }
 
 INITOBJ(Scheduler, scheduler, SCHEDULER)

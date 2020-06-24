@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -19,15 +19,7 @@
 #define __INIT_H
 
 #include "Types.h"
-
-/**
- * Can be used to link a symbol inside a specific section.
- * @param s Section name.
- */
-#define SECTION(s)	__attribute__((__section__(s)))
-
-/** Declares an symbol to be forcibly "used". */
-#define USED		__attribute__((__used__))
+#include "Macros.h"
 
 /**
  * Defines a class function for initialization.
@@ -70,6 +62,16 @@
  * @param name Variable name.
  * @param level The ordering of the instantiation.
  */
+#ifdef HOST
+#define INITOBJ(class,name,level) \
+    class *name; \
+    \
+    void __attribute((constructor)) USED __mk_##class##name() \
+    { \
+	name = class::instance(); \
+    }
+
+#else
 #define INITOBJ(class,name,level) \
     class *name; \
     \
@@ -78,6 +80,7 @@
 	name = class::instance(); \
     } \
     INITFUNC(__mk_##class##name, level)
+#endif /* HOST */
 
 /**
  * Execute a range of initialization functions.
@@ -92,6 +95,19 @@
 	{ \
     	    (*(InitHandler **) i)(); \
 	} \
+    }
+
+/**
+ * Performs registration of a function callback handler.
+ * @param list List containing function handlers.
+ * @param class Class name of the handler.
+ * @param func Function member name of the handler.
+ * @see List
+ */
+#define REGISTER(list,class,func) \
+    static void __attribute__((constructor)) __register_##class##func() \
+    { \
+	list.insertTail(&class::func); \
     }
 
 /**

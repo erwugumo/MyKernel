@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -26,6 +26,11 @@
 #include "Interrupt.h"
 #include "CPU.h"
 
+/**   
+ * @defgroup x86kernel kernel (x86)  
+ * @{   
+ */
+
 /** IO base address for master PIC */
 #define PIC1_CMD        0x20 
 
@@ -45,7 +50,7 @@
 #define PIC_IRQ_BASE	0x20
 
 /** PIT maximum frequency. */
-#define PIT_FREQUENCY   1193180
+#define PIT_FREQUENCY   1193182
 
 /** PIT IRQ interval. */
 #define PIT_HZ		250
@@ -59,18 +64,17 @@
 /** PIT channel zero. */
 #define PIT_CHAN0	0x40
 
-
 /**
  * Implements an x86 compatible kernel.
  */
-class x86Kernel : public Kernel, public Singleton<x86Kernel>
+class X86Kernel : public Kernel, public Singleton<X86Kernel>
 {
     public:
 
         /**
          * Constructor function.
          */
-	x86Kernel();
+	X86Kernel();
 	
 	/**
 	 * Hooks a function to an hardware interrupt.
@@ -122,7 +126,11 @@ class x86Kernel : public Kernel, public Singleton<x86Kernel>
 };
 
 /** Points to the kernel. */
-extern x86Kernel *kernel;
+extern X86Kernel *kernel;
+
+/**
+ * @}
+ */
 
 #endif /* __ASSEMBLY__ */
 #endif /* __X86_CPU_H */

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 #ifndef __VECTOR_H
 #define __VECTOR_H
 
-#include <string.h>
 #include "Macros.h"
 #include "Types.h"
 #include "Assert.h"

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,26 +15,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/ProcessCtl.h>
-#include <api/IPCMessage.h>
-#include <arch/Init.h>
-#include <arch/Kernel.h>
+#include <API/ProcessCtl.h>
+#include <API/IPCMessage.h>
+#include <FreeNOS/Init.h>
+#include <FreeNOS/Kernel.h>
 #include <Error.h>
 
 void interruptNotify(CPUState *st, ArchProcess *p)
 {
-    UserMessage *m = (UserMessage *) new InterruptMessage(IRQ_REG(st));
-    p->getMessageQueue()->enqueue(m);
+    p->getMessages()->insertHead(new UserMessage(new InterruptMessage(IRQ_REG(st)),
+						 sizeof(InterruptMessage)));
     p->wakeup();
 }
 
-int ProcessCtlHandler(ProcessID procID, ProcessAction action, Address addr)
+int ProcessCtlHandler(ProcessID procID, ProcessOperation action, Address addr)
 {
     ArchProcess *proc = ZERO;
     ProcessInfo *info = (ProcessInfo *) addr;
 
     /* Verify memory address. */
-    if (action == Info)
+    if (action == InfoPID)
     {
 	if (!memory->access(scheduler->current(), addr, sizeof(ProcessInfo)))
 	{
@@ -42,22 +42,32 @@ int ProcessCtlHandler(ProcessID procID, ProcessAction action, Address addr)
 	}
     }
     /* Does the target process exist? */
-    else if(action != GetPID && !(proc = Process::byID(procID)))
+    if(action != GetPID && action != Spawn && !(proc = Process::byID(procID)))
     {
-	return ENOSUCH;
+	return ESRCH;
     }
     /* Handle request. */
     switch (action)
     {
 	case Spawn:
-	    return EINVALID;
+	    proc = new ArchProcess(addr);
+	    return proc->getID();
 	
-	case Kill:
+	case KillPID:
 	    delete proc;
 	    break;
 
 	case GetPID:
 	    return scheduler->current()->getID();
+
+	case Schedule:
+	    scheduler->executeNext();
+	    break;
+
+	case Resume:
+	    proc->setState(Ready);
+	    scheduler->enqueue(proc);
+	    break;
 	
 	case AllowIO:
 	    proc->IOPort(addr, true);
@@ -69,15 +79,7 @@ int ProcessCtlHandler(ProcessID procID, ProcessAction action, Address addr)
 	    kernel->enableIRQ(addr, true);
 	    break;
 	
-	case Info:
-	    
-	    /* Find next. */
-	    while (procID < MAX_PROCS && !(proc = Process::byID(procID)))
-		procID++;
-	    
-	    if (!proc)
-		return ENOSUCH;
-	
+	case InfoPID:
 	    info->id    = proc->getID();
 	    info->state = proc->getState();
     }

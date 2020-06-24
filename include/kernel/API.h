@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,11 @@
 #include "Init.h"
 
 /**
+ * @defgroup kernel kernel (generic)
+ * @{
+ */
+
+/**
  * Initializes an APIHandler.
  * @param nr Unique system call number.
  * @param handler APIHandler function.
@@ -44,7 +49,7 @@ typedef ulong APIHandler(ulong, ulong, ulong, ulong, ulong);
 /**
  * Various actions which may be performed inside an APIHandler.
  */
-typedef enum Action
+typedef enum Operation
 {
     Create 	= 0,
     Delete 	= 1,
@@ -54,10 +59,15 @@ typedef enum Action
     SendReceive = 5,
     Read 	= 6,
     Write 	= 7,
+    Lookup      = 8,
 }
 Action;
 
 /** List of known APIHandler functions. */
 extern Vector<APIHandler> apis;
+
+/**
+ * @}
+ */
 
 #endif /* __KERNEL_API_H */

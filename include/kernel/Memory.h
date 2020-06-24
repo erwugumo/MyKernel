@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -19,8 +19,13 @@
 #define __KERNEL_MEMORY_H
 #ifndef __ASSEMBLER__
 
-#include <arch/Process.h>
+#include <FreeNOS/Process.h>
 #include <Types.h>
+
+/** 
+ * @defgroup kernel kernel (generic)
+ * @{ 
+ */
 
 /**
  * Represents system memory.
@@ -109,12 +114,12 @@ class Memory
 				   Address vaddr, ulong prot) = 0;
 
 	/**
-	 * Convert an (remote) virtual address to a physical address.
+	 * Lookup a pagetable entry for the given (remote) virtual address.
 	 * @param p Target process.
-	 * @param vaddr Virtual address to convert.
-	 * @return Physical address, if vaddr is mapped, or ZERO if not.
+	 * @param vaddr Virtual address to lookup.
+	 * @return Page table entry if vaddr is mapped, or ZERO if not.
 	 */
-	virtual Address virtualToPhysical(ArchProcess *p, Address vaddr) = 0;
+	virtual Address lookupVirtual(ArchProcess *p, Address vaddr) = 0;
 
         /** 
          * Verify protection access flags.
@@ -125,6 +130,12 @@ class Memory
          */
         virtual bool access(ArchProcess *p, Address vaddr, Size sz,
                 	    ulong prot = PAGE_PRESENT|PAGE_RW|PAGE_USER) = 0;
+
+	/**
+	 * Marks all physical pages used by a process as free (if not pinned).
+	 * @param p Target process.
+	 */
+	virtual void releaseAll(ArchProcess *p) = 0;
 
     protected:
 
@@ -149,6 +160,10 @@ class Memory
 	 */
 	void setMark(Address addr, bool marked);
 };
+
+/**
+ * @}
+ */
 
 #endif /* __ASSEMBLY__ */
 #endif /* __MEMORY_H */

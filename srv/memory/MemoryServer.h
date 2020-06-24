@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,15 +18,19 @@
 #ifndef __MEMORY_MEMORYSERVER_H
 #define __MEMORY_MEMORYSERVER_H
 
-#include <api/IPCMessage.h>
-#include <api/VMCtl.h>
-#include <api/SystemInfo.h>
-#include <arch/Process.h>
-#include <arch/Memory.h>
+#include <API/IPCMessage.h>
+#include <API/VMCtl.h>
+#include <API/SystemInfo.h>
+#include <FreeNOS/Process.h>
+#include <FreeNOS/Memory.h>
+#include <IPCServer.h>
 #include <Types.h>
+#include <Macros.h>
+#include <Error.h>
+#include "MemoryMessage.h"
 
 /** Starting address of the heap. */
-#define HEAP_START	0xe0000000
+#define HEAP_START	(0xe0000000)
 
 /** Maximum size of the heap (256 MB). */
 #define HEAP_MAX	(1024 * 1024 * 256)
@@ -34,58 +38,13 @@
 /** Ending address of the heap. */
 #define HEAP_END	(HEAP_START + HEAP_MAX - MEMALIGN)
 
-/**
- * Actions which can be specified in an MemoryMessage.
- */
-typedef enum MemoryAction
-{
-    HeapGrow    = 0,
-    HeapShrink  = 1,
-    MemoryUsage = 2,
-    MemoryOK    = 3,
-    MemoryError = 4,
-}
-MemoryAction;
-
-/**
- * Memory operation message.
- */
-typedef struct MemoryMessage : public Message
-{
-    /**
-     * Default constructor.
-     */
-    MemoryMessage() : action(MemoryError), bytes(ZERO)
-    {
-    }
-
-    /**
-     * Assignment operator.
-     * @param m MemoryMessage pointer to copy from.
-     */
-    void operator = (MemoryMessage *m)
-    {
-	from   = m->from;
-	type   = m->type;
-	action = m->action;
-	bytes  = m->bytes;
-    }
-
-    /** Action to perform. */
-    MemoryAction action;
-
-    /** Indicates a number of bytes. */
-    Size bytes, bytesFree;
-
-    /** Start and end addresses (e.g. of the heap). */
-    Address startAddr, endAddr;
-}
-MemoryMessage;
+/** Virtual address, at which we map the process table. */
+#define PROCTABLE	(0xf0000000)
 
 /**
  * Memory management server.
  */
-class MemoryServer
+class MemoryServer : public IPCServer<MemoryServer, MemoryMessage>
 {
     public:
     
@@ -93,35 +52,32 @@ class MemoryServer
 	 * Class constructor function.
 	 */
 	MemoryServer();
-	
-	/**
-	 * Enters an infinite loop, serving incoming memory requests.
-	 * @return Never.
-	 */
-	int run();
-	
+
     private:
     
 	/**
 	 * Allocate more memory pages for the heap of a process.
 	 * @param msg Request message.
-	 * @param reply Reply message.
 	 */
-	void doGrow(MemoryMessage *msg, MemoryMessage *reply);
+	void doGrow(MemoryMessage *msg);
 
 	/**
 	 * Releases memory pages from the heap of a process.
 	 * @param msg Request message.
-	 * @param reply Reply message.
 	 */
-	void doShrink(MemoryMessage *msg, MemoryMessage *reply);
+	void doShrink(MemoryMessage *msg);
     
 	/**
 	 * Retrieve the physical memory usage.
 	 * @param msg Request message.
-	 * @param reply Reply message.
 	 */
-	void doUsage(MemoryMessage *msg, MemoryMessage *reply);
+	void doUsage(MemoryMessage *msg);
+	
+	/**
+	 * Resets heap pointer from a killed process.
+	 * @param msg Request message.
+	 */
+	void doReset(MemoryMessage *msg);
 
 	/** Heap pointers. */
 	Address heaps[MAX_PROCS];

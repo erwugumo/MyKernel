@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -17,6 +17,11 @@
 
 #ifndef __X86_MEMORY_H
 #define __X86_MEMORY_H
+
+/**   
+ * @defgroup x86kernel kernel (x86)  
+ * @{   
+ */
 
 #ifdef __ASSEMBLER__
 #define ADDRESS
@@ -115,12 +120,18 @@
 #ifndef __ASSEMBLER__
 
 /**
- * Flushes the Translation Lookaside Buffers (TLB).
+ * Flushes the Translation Lookaside Buffers (TLB) for a single page.
  * @param addr Memory address to flush.
  */
-#define INVALIDATE(addr) \
-    asm volatile ("movl %cr3, %eax;\n" \
-		  "movl %eax, %cr3");
+#define tlb_flush(addr) \
+    asm volatile("invlpg (%0)" ::"r" (addr) : "memory")
+
+/**
+ * Flushes all Translation Lookaside Buffers (TLB).
+ */
+#define tlb_flush_all() \
+    asm volatile("mov %cr3, %eax\n" \
+	         "mov %eax, %cr3\n")
 
 #include <kernel/Memory.h>
 #include <Singleton.h>
@@ -131,14 +142,14 @@
 /**
  * x86 Virtual Memory.
  */
-class x86Memory : public Memory, public Singleton<x86Memory>
+class X86Memory : public Memory, public Singleton<X86Memory>
 {
     public:
 
 	/**
 	 * Constructor function.
 	 */
-	x86Memory();
+	X86Memory();
 
 	/**
 	 * Map a physical page to a virtual address, using intel's paged virtual memory.
@@ -158,16 +169,16 @@ class x86Memory : public Memory, public Singleton<x86Memory>
 	 * @param prot Page entry protection flags.
 	 * @return Mapped physical address.
 	 */	
-	Address mapVirtual(x86Process *p, Address paddr,
+	Address mapVirtual(X86Process *p, Address paddr,
 			   Address vaddr, ulong prot = PAGE_PRESENT | PAGE_RW);
 
         /**
-         * Convert an (remote) virtual address to a physical address.
+         * Lookup a pagetable entry for the given (remote) virtual address.
          * @param p Target process.
-	 * @param vaddr Virtual address to convert.
-	 * @return Physical address, if vaddr is mapped, or ZERO if not.
+	 * @param vaddr Virtual address to lookup.
+	 * @return Page table entry if vaddr is mapped, or ZERO if not.
 	 */
-	Address virtualToPhysical(x86Process *p, Address vaddr);
+	Address lookupVirtual(X86Process *p, Address vaddr);
 
 	/**
 	 * Verify protection access flags in the page directory and page table.
@@ -176,8 +187,14 @@ class x86Memory : public Memory, public Singleton<x86Memory>
 	 * @param sz Size of the byte range to check.
 	 * @return True if the current process has access, false otherwise.
 	 */
-	bool access(x86Process *p, Address vaddr, Size sz,
+	bool access(X86Process *p, Address vaddr, Size sz,
 		    ulong prot = PAGE_PRESENT|PAGE_RW|PAGE_USER);
+
+        /** 
+         * Marks all physical pages used by a process as free (if not pinned). 
+         * @param p Target process. 
+         */
+	void releaseAll(ArchProcess *p);
 
     private:
     
@@ -194,7 +211,7 @@ class x86Memory : public Memory, public Singleton<x86Memory>
 	 * @param p Other process for which we map tables.
 	 * @param vaddr Point page table pointer for this address.
 	 */
-	void mapRemote(x86Process *p, Address vaddr);
+	void mapRemote(X86Process *p, Address vaddr);
 	
 	/** Remote page directory and page tables. */
 	Address *remPageDir, *remPageTab;
@@ -204,10 +221,15 @@ class x86Memory : public Memory, public Singleton<x86Memory>
 };
 
 /** Instance of Intel memory. */
-extern x86Memory *memory;
+extern X86Memory *memory;
 
 /** Kernel page directory. */
 extern Address kernelPageDir[1024], kernelPageTab[1024];
 
 #endif /* __ASSEMBLER__ */
+
+/**
+ * @}
+ */
+
 #endif /* __X86_MEMORY_H */

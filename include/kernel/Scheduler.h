@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -19,11 +19,17 @@
 #define __KERNEL_SCHEDULER_H
 #ifndef __ASSEMBLER__
 
-#include <arch/Process.h>
-#include <Queue.h>
+#include <FreeNOS/Process.h>
+#include <List.h>
+#include <ListIterator.h>
 #include <Macros.h>
 #include <Singleton.h>
 #include "Process.h"
+
+/** 
+ * @defgroup kernel kernel (generic)
+ * @{ 
+ */
 
 /**
  * Responsible for deciding which Process may execute on the CPU(s).
@@ -41,6 +47,12 @@ class Scheduler : public Singleton<Scheduler>
 	 * Let the next Process run on a CPU.
 	 */
 	void executeNext();
+	
+	/**
+	 * Try to execute the given process.
+	 * @param p Process pointer.
+	 */
+	void executeAttempt(ArchProcess *p);
 
 	/**
 	 * Fetch the current process being executed.
@@ -61,21 +73,13 @@ class Scheduler : public Singleton<Scheduler>
         }
 
 	/**
-	 * Hard override the current process.
-	 * @param p New current process.
+	 * Determines which process to run if nothing to do.
+	 * @param p Process to run if no other processes ready.
 	 */
-	void setCurrent(ArchProcess *p)
+	void setIdle(ArchProcess *p)
 	{
-	    currentProcess = p;
-	}
-
-	/**
-	 * Hard override the old process.
-	 * @param p New old process.
-	 */
-	void setOld(ArchProcess *p)
-	{
-	    oldProcess = p;
+	    idleProcess = p;
+	    queue.remove(p);
 	}
 
 	/**
@@ -92,18 +96,34 @@ class Scheduler : public Singleton<Scheduler>
 
     private:
     
+	/**
+	 * Look for the next Ready process.
+	 * @return Pointer to a Ready process, or ZERO if none is Ready yet.
+	 */
+	ArchProcess * findNextReady();
+    
 	/** Contains processes waiting to be scheduled. */
-	Queue<ArchProcess> queue;
+	List<ArchProcess> queue;
+	
+	/** Points to the next process to be scheduled. */
+	ListIterator<ArchProcess> queuePtr;
 	
 	/** Currently executing Process. */
 	ArchProcess *currentProcess;
 
         /** Previous executing Process. */
         ArchProcess *oldProcess;
+	
+	/** Process to execute if nothing to do. */
+	ArchProcess *idleProcess;
 };
 
 /** Scheduler instance. */
 extern Scheduler *scheduler;
+
+/**
+ * @}
+ */
 
 #endif /* __ASSEMBLER__ */
 #endif /* __KERNEL_SCHEDULER_H */

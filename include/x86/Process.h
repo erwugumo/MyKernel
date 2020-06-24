@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,15 +15,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __AMD64_PROCESS_H
-#define __AMD64_PROCESS_H
+#ifndef __X86_PROCESS_H
+#define __X86_PROCESS_H
+
+/**   
+ * @defgroup x86kernel kernel (x86)  
+ * @{   
+ */
 
 #ifndef __ASSEMBLY__
+#ifdef  __cplusplus
 
 /**
  * Used by kernel/ classes to point back to us.
  */
-#define ArchProcess x86Process
+#define ArchProcess X86Process
 class ArchProcess;
 
 #include <kernel/Process.h>
@@ -34,7 +40,7 @@ class ArchProcess;
 /**
  * Process which may execute on an Intel x86 CPU.
  */
-class x86Process : public Process
+class X86Process : public Process
 {
     public:
 
@@ -42,16 +48,17 @@ class x86Process : public Process
          * Constructor function.
 	 * @param entry Initial EIP register value.
          */
-	x86Process(Address entry);
+	X86Process(Address entry);
 
 	/**
 	 * Destructor function.
 	 */
-	~x86Process();
+	~X86Process();
 	
 	/**
-	 * Allow
-	 *
+	 * (Dis)allows a process direct I/O to a port.
+	 * @param port I/O port.
+	 * @param enabled (Dis)allow access.
 	 */
 	void IOPort(u16 port, bool enabled);
 	
@@ -84,5 +91,25 @@ class x86Process : public Process
 	Address ioMapAddr;
 };
 
+/**
+ * Assembly routine which performs context switches.
+ * @param oldStackPtr Pointer to the stackAddr of the currently running X86Process, if any.
+ * @param pageDirAddr Address of the page directory.
+ * @param stackAddr Address of the user stack.
+ * @param kernelTss Pointer to the kernel's TSS.
+ * @param kernelStackAddr Address of the kernel stack.
+ * @see TSS
+ * @see contextSwitch.S
+ */
+extern C void contextSwitch(Address *oldStack,  Address pageDirAddr,
+			    Address  stackAddr, TSS *kernelTss,
+			    Address  kernelStackAddr);
+
+#endif /* __cplusplus */
 #endif /* __ASSEMBLY__ */
+
+/**
+ * @}
+ */
+
 #endif /* __X86_PROCESS_H */

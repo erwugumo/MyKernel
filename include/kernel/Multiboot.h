@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,11 +18,19 @@
 #ifndef __KERNEL_MULTIBOOT_H
 #define __KERNEL_MULTIBOOT_H
 
-/** The magic number for the Multiboot header.  */
+/**
+ * @defgroup kernel kernel (generic)
+ * @{
+ */
+
+/** The magic number for the Multiboot header. */
 #define MULTIBOOT_HEADER_MAGIC		0x1BADB002
 
-/** The flags for the Multiboot header.  */
+/** The flags for the Multiboot header. */
 #define MULTIBOOT_HEADER_FLAGS		0x00000003
+
+/** Marks an ELF-compatible executable. */
+#define MULTIBOOT_HEADER_ELF_FLAGS	0x00010003
 
 /** Size of the multiboot header structure. */
 #define MULTIBOOT_HEADER_SIZE		52
@@ -111,6 +119,10 @@ MultibootMemoryMap;
 
 /** Fill in by the early boot process. */
 extern MultibootInfo multibootInfo;
+
+/**
+ * @}
+ */
 
 #endif /* !__ASSEMBLER__ */
 #endif /* __KERNEL_MULTIBOOT_H */

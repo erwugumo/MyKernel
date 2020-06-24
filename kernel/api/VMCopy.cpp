@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -15,13 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <api/VMCopy.h>
-#include <arch/Process.h>
-#include <arch/API.h>
-#include <arch/Memory.h>
+#include <API/VMCopy.h>
+#include <FreeNOS/Process.h>
+#include <FreeNOS/API.h>
+#include <FreeNOS/Memory.h>
 #include <Error.h>
+#include <string.h>
 
-int VMCopyHandler(ProcessID procID, Action how, Address ours, Address theirs, Size sz)
+int VMCopyHandler(ProcessID procID, Operation how, Address ours,
+				    Address theirs, Size sz)
 {
     ArchProcess *proc;
     Address paddr, tmpAddr;
@@ -30,7 +32,7 @@ int VMCopyHandler(ProcessID procID, Action how, Address ours, Address theirs, Si
     /* Find the corresponding ArchProcess. */
     if (!(proc = ArchProcess::byID(procID)))
     {
-	return ENOSUCH;
+	return ESRCH;
     }
     /* Verify memory addresses. */
     if (!memory->access(scheduler->current(), ours, sz) ||
@@ -42,7 +44,7 @@ int VMCopyHandler(ProcessID procID, Action how, Address ours, Address theirs, Si
     while (total < sz)
     {
 	/* Update variables. */
-	paddr   = memory->virtualToPhysical(proc, theirs);
+	paddr   = memory->lookupVirtual(proc, theirs) & PAGEMASK;
 	pageOff = theirs & ~PAGEMASK;
 	bytes   = (PAGESIZE - pageOff) < sz ? (PAGESIZE - pageOff) : sz;
 		
@@ -69,10 +71,11 @@ int VMCopyHandler(ProcessID procID, Action how, Address ours, Address theirs, Si
 	/* Remove mapping. */
 	memory->mapVirtual((Address) 0, (Address) tmpAddr, 0);
 	ours   += bytes;
+	theirs += bytes;
 	total  += bytes;
     }
     /* Success. */
-    return 0;
+    return total;
 }
 
 INITAPI(VMCOPY, VMCopyHandler)

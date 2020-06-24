@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,19 @@
 #ifndef __X86_CPU_H
 #define __X86_CPU_H
 
+/**   
+ * @defgroup x86kernel kernel (x86)
+ * @{   
+ */
+
+/** Intel is little endian. */
+#define LITTLE_ENDIAN	1
+
 /** Paged Mode. */
 #define CR0_PG		0x80000000
+
+/** Timestamp Counter Disable. */
+#define CR4_TSD		0x00000004
 
 /** Kernel Code Segment. */
 #define KERNEL_CS       1 
@@ -46,11 +57,38 @@
 #include <Types.h>
 
 /**
- * Retrieve the interrupt vector register field from CPUState.
- * @return Interrupt vector.
+ * Retrieve the IRQ number from CPUState.
+ * @return IRQ number.
  */
 #define IRQ_REG(state) \
-    ((state)->vector)
+    ((state)->vector - 0x20)
+
+/**
+ * Reads the CPU's timestamp counter.
+ * @return 64-bit integer.
+ */
+#define timestamp() \
+    ({ \
+	u64 low = 0, high = 0; \
+	asm volatile ("rdtsc\n" \
+		      "movl %%eax, %0\n" \
+		      "movl %%edx, %1\n" : "=r"(low), "=r"(high)); \
+	(u64) (high << 32) | (low); \
+    })
+
+/**
+ * Reboot the system (by sending the a reset signal on the keyboard I/O port)
+ */
+#define reboot() \
+    outb(0x64, 0xfe)
+
+/**
+ * Shutdown the machine via ACPI.
+ * @note We do not have ACPI yet. Shutdown now has a bit naive implementation.
+ * @see http://forum.osdev.org/viewtopic.php?t=16990
+ */
+#define shutdown() \
+    outw(0xB004, 0x0 | 0x2000)
 
 /**  
  * Puts the CPU in a lower power consuming state. 
@@ -88,13 +126,21 @@
 #define outb(port,byte) \
     asm volatile ("outb %%al,%%dx"::"a" (byte),"d" (port))
 
+/**
+ * Output a word to a port.
+ * @param port Port to write to.
+ * @param byte The word to output.
+ */
+#define outw(port,word) \
+    asm volatile ("outw %%ax,%%dx"::"a" (word),"d" (port))
+
 /** 
  * Output a long to a I/O port. 
- * @param long The long 32-bit number to output. 
  * @param port Target I/O port. 
+ * @param l The long 32-bit number to output.
  */
-#define outl(l,port) \
-    asm volatile ("outl %%eax,%%dx"::"a"(l),"d"(port))
+#define outl(port,l) \
+    asm volatile ("outl %%eax,%%dx"::"a" (l),"d" (port))
 
 /** I/O bitmap. */
 extern Address kernelioBitMap[1024];
@@ -176,6 +222,9 @@ extern Segment gdt[];
 /** Task State Segment. */
 extern TSS kernelTss;
 
+/**
+ * @}
+ */
 
 #endif /* __ASSEMBLER__ */
 #endif /* __X86_CPU_H */

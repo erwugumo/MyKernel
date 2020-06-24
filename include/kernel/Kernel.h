@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 Niek Linnenbank
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -18,10 +18,16 @@
 #ifndef __KERNEL_KERNEL_H
 #define __KERNEL_KERNEL_H
 
+#include <FreeNOS/Interrupt.h>
+#include <FreeNOS/BootImage.h>
 #include <Macros.h>
 #include <Types.h>
-#include <arch/Interrupt.h>
 #include "Multiboot.h"
+
+/** 
+ * @defgroup kernel kernel (generic)
+ * @{ 
+ */
 
 /**
  * Represents the kernel core.
@@ -49,6 +55,16 @@ class Kernel
          * @param enabled True to enable, and false to disable. 
          */
         virtual void enableIRQ(uint vector, bool enabled) = 0;
+
+    private:
+    
+	/**
+	 * Creates a new Process from a BootProcess.
+	 * @param image BootImage pointer loaded by the bootloader in kernel virtual memory.
+	 * @param imagePAddr Physical memory address of the boot image.
+	 * @param index Index in the BootProcess table.
+	 */
+	void loadBootProcess(BootImage *image, Address imagePAddr, Size index);
 };
 
 /**
@@ -61,5 +77,9 @@ extern Address kernelStart;
 
 /** End of kernel. */
 extern Address kernelEnd;
+
+/**
+ * @}
+ */
 
 #endif /* __KERNEL_KERNEL_H */
